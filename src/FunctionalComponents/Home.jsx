@@ -13,38 +13,52 @@ export default class Home extends Component {
   }
 
   async getAPIData() {
+    // Reset page to 1 for the first load or search
     this.setState({ page: 1 });
-    let response = await fetch(
-      `https://newsapi.org/v2/everything?q=${
-        this.props.search ? this.props.search : this.props.q
-      }&language=${
-        this.props.language
-      }&pagesize=24&page=1&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`
-    );
-    response = await response.json();
-    if (response.status === "ok") {
-      this.setState({
-        articles: response.articles.filter((x) => x.title !== "[Removed]"),
-        totalResults: response.totalResults,
-      });
+
+    try {
+      const response = await fetch(
+        `https://newsapi.org/v2/everything?q=${
+          this.props.search ? this.props.search : this.props.q
+        }&language=${
+          this.props.language
+        }&pagesize=24&page=1&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`
+      );
+      const data = await response.json();
+      if (data.status === "ok") {
+        this.setState({
+          articles: data.articles.filter((x) => x.title !== "[Removed]"),
+          totalResults: data.totalResults,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
     }
   }
+
   fetchData = async () => {
-    this.setState({ page: this.state.page + 1 });
-    let response = await fetch(
-      `https://newsapi.org/v2/everything?q=${
-        this.props.search ? this.props.search : this.props.q
-      }&language=${this.props.language}&pagesize=24&page=${
-        this.state.page + 1
-      }&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`
-    );
-    response = await response.json();
-    if (response?.status === "ok")
-      this.setState({
-        articles: this.state.articles.concat(
-          response.articles.filter((x) => x.title !== "[Removed]")
-        ),
-      });
+    this.setState((prevState) => ({ page: prevState.page + 1 }));
+
+    try {
+      const response = await fetch(
+        `https://newsapi.org/v2/everything?q=${
+          this.props.search ? this.props.search : this.props.q
+        }&language=${this.props.language}&pagesize=24&page=${
+          this.state.page + 1
+        }&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`
+      );
+      const data = await response.json();
+      if (data?.status === "ok") {
+        this.setState((prevState) => ({
+          articles: [
+            ...prevState.articles,
+            ...data.articles.filter((x) => x.title !== "[Removed]"),
+          ],
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching more data:", error);
+    }
   };
   componentDidMount() {
     this.getAPIData();
