@@ -13,7 +13,6 @@ export default class Home extends Component {
   }
 
   async getAPIData() {
-    // Reset page to 1 for the first load or search
     this.setState({ page: 1 });
 
     try {
@@ -22,7 +21,13 @@ export default class Home extends Component {
           this.props.search ? this.props.search : this.props.q
         }&language=${
           this.props.language
-        }&pagesize=24&page=1&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`
+        }&pageSize=24&page=1&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        }
       );
       const data = await response.json();
       if (data.status === "ok") {
@@ -30,6 +35,8 @@ export default class Home extends Component {
           articles: data.articles.filter((x) => x.title !== "[Removed]"),
           totalResults: data.totalResults,
         });
+      } else {
+        console.error("API returned error:", data);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -37,15 +44,21 @@ export default class Home extends Component {
   }
 
   fetchData = async () => {
-    this.setState((prevState) => ({ page: prevState.page + 1 }));
+    const nextPage = this.state.page + 1;
 
     try {
       const response = await fetch(
         `https://newsapi.org/v2/everything?q=${
           this.props.search ? this.props.search : this.props.q
-        }&language=${this.props.language}&pagesize=24&page=${
-          this.state.page + 1
-        }&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`
+        }&language=${
+          this.props.language
+        }&pageSize=24&page=${nextPage}&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+        }
       );
       const data = await response.json();
       if (data?.status === "ok") {
@@ -54,18 +67,30 @@ export default class Home extends Component {
             ...prevState.articles,
             ...data.articles.filter((x) => x.title !== "[Removed]"),
           ],
+          page: nextPage,
         }));
+      } else {
+        console.error("API returned error:", data);
       }
     } catch (error) {
       console.error("Error fetching more data:", error);
     }
   };
+
   componentDidMount() {
     this.getAPIData();
   }
+
   componentDidUpdate(prevProps) {
-    if (this.props !== prevProps) this.getAPIData();
+    if (
+      this.props.search !== prevProps.search ||
+      this.props.q !== prevProps.q ||
+      this.props.language !== prevProps.language
+    ) {
+      this.getAPIData();
+    }
   }
+
   render() {
     return (
       <div className="container-fluid">
@@ -73,31 +98,29 @@ export default class Home extends Component {
           {this.props.search ? this.props.search : this.props.q} Articles
         </h5>
         <InfiniteScroll
-          dataLength={this.state.articles?.length}
+          dataLength={this.state.articles.length}
           next={this.fetchData}
-          hasMore={this.state.articles?.length < this.state.totalResults}
+          hasMore={this.state.articles.length < this.state.totalResults}
           loader={
             <div className="my-5 text-center">
               <div className="spinner-border" role="status">
-                <span classname="visually-hidden"></span>
+                <span className="visually-hidden">Loading...</span>
               </div>
             </div>
           }
         >
           <div className="row">
-            {this.state.articles?.map((item, index) => {
-              return (
-                <NewsItem
-                  key={index}
-                  source={item.source.name ?? "N/A"}
-                  title={item.title}
-                  description={item.description}
-                  url={item.url}
-                  pic={item.urlToImage ?? "/images/noimage.png"}
-                  date={item.publishedAt}
-                />
-              );
-            })}
+            {this.state.articles.map((item, index) => (
+              <NewsItem
+                key={index}
+                source={item.source.name ?? "N/A"}
+                title={item.title}
+                description={item.description}
+                url={item.url}
+                pic={item.urlToImage ?? "/images/noimage.png"}
+                date={item.publishedAt}
+              />
+            ))}
           </div>
         </InfiniteScroll>
       </div>
